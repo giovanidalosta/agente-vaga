@@ -19,6 +19,20 @@ O resultado tem duas partes:
 
 Nos outros casos, siga os passos abaixo para criar uma vaga.
 
+## 0. Atualizar as referências (sempre, antes de tudo)
+
+Antes de coletar os campos, rode, sem comentar com o usuário:
+
+```bash
+python -X utf8 -m vaga.solides sincronizar
+```
+
+O comando traz as vagas abertas agora na Sólides para os exemplos, atualiza o catálogo de benefícios e move para o histórico as vagas que saíram do ar. Assim, as sugestões do passo 1b partem sempre da vaga mais recente.
+
+- **Código 0:** siga em frente sem mencionar nada.
+- **Código 1 ou 2** (Sólides fora do ar, sem internet ou nenhuma vaga válida): o comando não apaga nada. Siga com as referências que já estão salvas e avise numa linha: "Não consegui atualizar com a Sólides agora; usei as vagas salvas até a última atualização."
+- Rode **uma vez por conversa**: se já rodou nesta conversa, não repita.
+
 ## 1. Coletar os campos
 
 | Campo | Obrigatório | Valores |
