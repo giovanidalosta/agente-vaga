@@ -1,6 +1,6 @@
 # Analista de Suporte Técnico JR
 
-> Vaga publicada: https://ikatec.vagas.solides.com.br/vaga/945675
+> Vaga publicada: https://ikatec.vagas.solides.com.br/vaga/945675 · criada em 2026-10-28
 
 **Ficha para a Sólides**
 - Local: Bauru - SP

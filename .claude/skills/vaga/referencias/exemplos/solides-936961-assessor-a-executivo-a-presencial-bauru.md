@@ -1,6 +1,6 @@
 # Assessor(a) Executivo(a) - PRESENCIAL BAURU
 
-> Vaga publicada: https://ikatec.vagas.solides.com.br/vaga/936961
+> Vaga publicada: https://ikatec.vagas.solides.com.br/vaga/936961 · criada em 2026-10-12
 
 **Ficha para a Sólides**
 - Local: Bauru - SP

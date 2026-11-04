@@ -1,6 +1,6 @@
 # Analista de Suporte Ténico - Pleno [PRESENCIAL]
 
-> Vaga publicada: https://ikatec.vagas.solides.com.br/vaga/935395
+> Vaga publicada: https://ikatec.vagas.solides.com.br/vaga/935395 · criada em 2026-10-08
 
 **Ficha para a Sólides**
 - Local: Bauru - SP

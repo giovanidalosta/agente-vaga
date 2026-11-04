@@ -1,6 +1,6 @@
 # Representante de Desenvolvimento de Vendas (SDR) - JR [PRESENCIAL]
 
-> Vaga publicada: https://ikatec.vagas.solides.com.br/vaga/943899
+> Vaga publicada: https://ikatec.vagas.solides.com.br/vaga/943899 · criada em 2026-10-26
 
 **Ficha para a Sólides**
 - Local: Bauru - SP
