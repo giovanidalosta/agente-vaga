@@ -37,7 +37,17 @@ Nos outros casos, siga os passos abaixo para criar uma vaga.
 | horario | não | texto (ex.: "das 10h às 20h") |
 | area | não | texto, contexto para a introdução (ex.: "time de Marketing") |
 
-Use o que o usuário já informou, inclusive na mensagem que chamou `/vaga`. Pergunte **de uma vez só** por todos os obrigatórios que faltarem, mostrando as opções válidas dos campos de lista fechada. Não pergunte pelos opcionais um a um; diga numa linha que eles podem ser informados.
+Use o que o usuário já informou, inclusive na mensagem que chamou `/vaga`.
+
+**Se faltar algum obrigatório, ofereça o formulário:**
+- **No app do Claude** (quando a ferramenta `show_widget` existir): carregue `read_me` com o módulo `elicitation`, leia `.claude/skills/vaga/referencias/formulario.html` e passe o conteúdo, sem alterar, como `widget_code` do `show_widget`. Antes do formulário, escreva só uma linha: "Preencha os campos abaixo e clique em Gerar vaga." Não repita os campos em texto.
+  - A resposta chega na mensagem seguinte, numa linha como `Detalhes da vaga — Cargo: … · Senioridade: … · Responsabilidades: … / …`. Textos longos aparecem depois de `--- Full content ---`.
+  - Nos campos de lista (responsabilidades, requisitos, diferenciais, soft skills, benefícios), cada linha, ou cada trecho separado por ` / `, é um item.
+  - `Observacoes` pode trazer horário, faixa salarial e área: distribua o que houver em `horario`, `faixa_salarial` e `area`.
+  - Se aparecer "Skipped the form", peça os dados em texto, como no item abaixo.
+- **No terminal ou sem `show_widget`**: mande de uma vez só um bloco para o usuário copiar e preencher, só com os campos que faltam, na ordem da tabela e com as opções dos campos de lista fechada, por exemplo `Senioridade (Estágio, Júnior, Pleno, Sênior, Especialista, Liderança):`. Diga numa linha que os opcionais podem ser informados.
+
+Se o usuário já trouxe todos os obrigatórios, não mostre o formulário.
 
 O recrutador costuma mandar poucos tópicos. Você pode desenvolver e detalhar o que ele informou, no nível de detalhe dos exemplos, sem acrescentar fatos novos (ver passo 4).
 
