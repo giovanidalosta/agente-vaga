@@ -56,7 +56,7 @@ Se o modelo não existir, pare e peça ao usuário o modelo de vaga da Ikatec.
 
 ## 4. Escrever
 
-**Título** (linha `# `), no estilo da Sólides: `<Cargo> <sigla da senioridade> [<MODELO>]`. Exemplo: `Analista de Suporte Técnico JR [PRESENCIAL]`. As siglas são: Estágio → ESTÁGIO, Júnior → JR, Pleno → PL, Sênior → SR; Especialista e Liderança vão por extenso.
+**Título** (linha `# `), no estilo da Sólides: `<Cargo> <sigla da senioridade> [<MODELO>]`. Exemplo: `Analista de Suporte Técnico JR [PRESENCIAL]`. As siglas são: Estágio → ESTÁGIO, Júnior → JR, Pleno → PL, Sênior → SR; Especialista e Liderança vão por extenso. As tags são `[PRESENCIAL]`, `[HÍBRIDO]` ou `[REMOTO]`.
 
 **Ficha para a Sólides**, logo abaixo do título, separada da descrição por `---`. Siga o formato dos exemplos:
 ```
@@ -65,13 +65,14 @@ Se o modelo não existir, pare e peça ao usuário o modelo de vaga da Ikatec.
 - Modelo de trabalho: <modelo_trabalho>
 - Contratação: <tipo_contratacao>
 - Senioridade: <senioridade>
-- Jornada: <jornada, se informada>
-- Faixa salarial: <faixa_salarial ou "Não informado">
-- Benefícios: <itens separados por "; ", se informados>
+- Jornada: <jornada>
+- Faixa salarial: <faixa_salarial>
+- Benefícios: <itens separados por "; ">
 ```
+Omita as linhas de Jornada, Faixa salarial e Benefícios quando o campo não foi informado. Não copie a linha "> Vaga publicada" dos exemplos; ela existe só nas referências.
 
 **Descrição:**
-- A introdução preenche as lacunas do modelo: "A Ikatec está em busca de um(a) <Cargo>. Se você <perfil da pessoa, a partir dos requisitos e soft skills>, queremos te conhecer!". Pode ter um segundo parágrafo sobre o papel ou a área, como nos exemplos.
+- A introdução preenche as lacunas do modelo: "A Ikatec está em busca de um(a) <Cargo>. Se você <perfil da pessoa, a partir dos requisitos e soft skills>, queremos te conhecer!". Na introdução, use a forma inclusiva do cargo (ex.: "Desenvolvedor(a) Backend", "Assessor(a) Executivo(a)"). Pode haver um segundo parágrafo sobre o papel ou a área, como nos exemplos.
 - Seções na ordem do modelo. Itens com a primeira letra maiúscula e terminados em `;`, com `.` no último item.
 - **Diferenciais** é opcional: se não for informado, omita a seção inteira.
 - **Soft Skills** é obrigatória: se não for informada, sugira de 4 a 6 coerentes com o cargo e as responsabilidades. No passo 7, avise que foram sugeridas.
@@ -104,8 +105,8 @@ Quando o modelo de trabalho não for Remoto, acrescente `--exigir "<local>"`. Se
 
 Mostre ao usuário:
 1. o caminho do arquivo salvo;
-2. a ficha para a Sólides;
-3. a **descrição pronta para colar** na Sólides, num bloco de código: títulos sem `## ` e itens com `• ` em vez de `- `, como nas vagas publicadas;
+2. o título e a ficha para a Sólides;
+3. a **descrição pronta para colar** no campo "Descrição" da Sólides, num bloco de código: tudo o que vem depois do `---`, com os títulos sem `## `, os itens com `• ` em vez de `- ` e as linhas em branco mantidas. O título e a ficha ficam fora do bloco, porque vão em campos próprios da Sólides;
 4. se for o caso, o aviso de que as soft skills foram sugeridas e devem ser revisadas.
 
 Ofereça ajustes, como tom, tamanho ou ênfase em algum ponto. A cada ajuste, salve e repita o passo 6.
