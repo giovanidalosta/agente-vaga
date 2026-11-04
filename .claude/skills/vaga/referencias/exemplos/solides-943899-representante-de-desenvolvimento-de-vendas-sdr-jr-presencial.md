@@ -49,7 +49,7 @@ Seu papel será entender as necessidades dos potenciais clientes, registrar toda
 - Experiência com CRM (HubSpot, Pipedrive, RD Station CRM ou similares);
 - Conhecimento em metodologias de vendas como SPIN Selling, BANT, GPCT, MEDDICC ou similares;
 - Experiência com ferramentas de automação comercial;
-- Conhecimento básico em Excel ou Google Sheets.
+- Conhecimento básico em Excel ou Google Sheets
 
 ## Soft Skills
 

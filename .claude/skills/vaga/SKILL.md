@@ -11,6 +11,13 @@ O resultado tem duas partes:
 - **Ficha para a Sólides:** local, modelo de trabalho, contratação, senioridade, jornada e benefícios. Na Sólides esses dados vão em campos próprios do formulário, não no texto.
 - **Descrição:** o corpo do anúncio, que segue `referencias/modelo-vaga.md`.
 
+## Outros pedidos
+
+- **Revisar uma vaga publicada** ("/vaga revisar <link ou id da Sólides>"): rode `python -X utf8 -m vaga.solides revisar "<link ou id>"`. Mostre a vaga e o resultado da validação. Se houver problemas, proponha o texto corrigido no formato do passo 7, sem salvar nada a menos que o usuário peça. Código de saída 2 significa que a vaga não está aberta ou que a Sólides não respondeu: mostre a mensagem.
+- **Atualizar as referências** ("/vaga atualizar exemplos"): rode `python -X utf8 -m vaga.solides sincronizar`. O comando baixa as vagas abertas, regrava os exemplos `solides-*.md` e o catálogo `referencias/beneficios.md`. Mostre o resumo que ele imprimir.
+
+Nos outros casos, siga os passos abaixo para criar uma vaga.
+
 ## 1. Coletar os campos
 
 | Campo | Obrigatório | Valores |
@@ -47,7 +54,9 @@ python -X utf8 -c "import json,sys; from dataclasses import asdict; from vaga.sc
 
 ## 3. Ler o padrão da empresa
 
-Leia `.claude/skills/vaga/referencias/modelo-vaga.md` e todos os arquivos em `.claude/skills/vaga/referencias/exemplos/`.
+Leia `.claude/skills/vaga/referencias/modelo-vaga.md`, `.claude/skills/vaga/referencias/beneficios.md` e todos os arquivos em `.claude/skills/vaga/referencias/exemplos/`. Os arquivos `solides-*.md` são as vagas abertas na Sólides, sincronizadas automaticamente.
+
+**Benefícios:** se o recrutador não informou `beneficios`, sugira o pacote do tipo de contratação que está em `beneficios.md`, com os itens oferecidos em pelo menos metade das vagas daquele tipo. Use os nomes exatamente como aparecem lá, que são os nomes do formulário da Sólides. Na ficha, marque a linha como `- Benefícios (sugeridos, confirme): …`. Se o tipo de contratação não aparecer em `beneficios.md`, omita a linha.
 
 - Use **exatamente** os títulos `## ` do modelo, na mesma ordem e com a mesma grafia, sem o marcador "(opcional)".
 - Imite o tom, o tamanho e a formatação dos exemplos: 1 a 3 parágrafos de introdução, listas de tópicos e a frase de fechamento.
@@ -80,7 +89,7 @@ Omita as linhas de Jornada, Faixa salarial e Benefícios quando o campo não foi
 - Termine com a frase de fechamento do modelo.
 
 **Regras:**
-- Não invente benefícios, faixa salarial, requisitos, responsabilidades, ferramentas, horários nem nomes de times. Você pode reescrever e detalhar o que foi informado.
+- Não invente benefícios, faixa salarial, requisitos, responsabilidades, ferramentas, horários nem nomes de times. Benefícios só podem vir do recrutador ou do catálogo `beneficios.md` (marcados como sugeridos). Você pode reescrever e detalhar o que foi informado.
 - Use linguagem inclusiva, como nos exemplos ("um(a)", "pessoa"). O cargo escrito literalmente no título não impede linguagem inclusiva no restante do texto.
 - Nunca peça gênero, idade, aparência, estado civil, filhos ou religião (Lei 9.029/95).
 - Não deixe placeholders: nada de `[...]` (exceto a tag do modelo no título, como `[PRESENCIAL]`), `{...}`, `_____`, `TODO` ou `XXX`.
@@ -107,6 +116,6 @@ Mostre ao usuário:
 1. o caminho do arquivo salvo;
 2. o título e a ficha para a Sólides;
 3. a **descrição pronta para colar** no campo "Descrição" da Sólides, num bloco de código: tudo o que vem depois do `---`, com os títulos sem `## `, os itens com `• ` em vez de `- ` e as linhas em branco mantidas. O título e a ficha ficam fora do bloco, porque vão em campos próprios da Sólides;
-4. se for o caso, o aviso de que as soft skills foram sugeridas e devem ser revisadas.
+4. se for o caso, o aviso de que as soft skills e/ou os benefícios foram sugeridos e devem ser revisados.
 
 Ofereça ajustes, como tom, tamanho ou ênfase em algum ponto. A cada ajuste, salve e repita o passo 6.

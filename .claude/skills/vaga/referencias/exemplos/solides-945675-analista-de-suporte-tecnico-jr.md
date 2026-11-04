@@ -44,6 +44,8 @@ A Ikatec busca um(a) Analista de Suporte Técnico para integrar nosso time e gar
 - Trabalho em equipe e colaboração;
 - Capacidade de adaptação a contextos dinâmicos.
 
-Horário de trabalho: das 10h às 20h ou das 12h às 22h (meia jornada na empresa e meia jornada em home office), sendo 2 horas de almoço.
+Horário de trabalho: Das 10h às 20h ou das 12h às 22h (meia jornada na empresa e meia jornada em home office)
+
+Sendo 2 horas de almoço.
 
 Se você tem paixão por tecnologia, foco em resolução de problemas e gosta de desafios, venha fazer parte do nosso time!
