@@ -15,6 +15,7 @@ from typing import Callable
 from vaga.schema import SENIORIDADES, _chave
 
 URL_VAGAS = "https://apigw.solides.com.br/jobs/v3/companies/{empresa}/vacancies?take=25&page={pagina}"  # API limita take a 25
+URL_VAGA = "https://apigw.solides.com.br/jobs/v3/vacancies/{id}"  # devolve também vagas encerradas
 
 
 class ErroSolides(Exception):
@@ -203,7 +204,7 @@ def vaga_para_exemplo(v: dict, slug: str = "ikatec") -> str:
 
     partes = [
         f"# {v['title'].strip()}",
-        f"> Vaga publicada: https://{slug}.vagas.solides.com.br/vaga/{v['id']}",
+        f"> Vaga publicada: https://{slug}.vagas.solides.com.br/vaga/{v['id']}" + (f" · criada em {v['createdAt'][:10]}" if v.get('createdAt') else ""),
         "**Ficha para a Sólides**\n" + "\n".join(l for l in ficha if l),
         "---",
         html_para_markdown(v.get("description") or ""),
@@ -248,10 +249,12 @@ def _sincronizar(vagas: list[dict], destino, modelo: str, empresa: str) -> int:
         return 1
 
     exemplos_dir.mkdir(parents=True, exist_ok=True)
+    historico_dir = Path(destino) / "historico"
     for antigo in exemplos_dir.glob("solides-*.md"):
         if antigo.name not in novos:
-            antigo.unlink()
-            print(f"removido: {antigo.name} (vaga não está mais aberta)")
+            historico_dir.mkdir(parents=True, exist_ok=True)
+            antigo.replace(historico_dir / antigo.name)
+            print(f"arquivado: {antigo.name} → historico/ (vaga não está mais aberta)")
     for nome, texto in novos.items():
         (exemplos_dir / nome).write_text(texto, encoding="utf-8")
     (Path(destino) / "beneficios.md").write_text(
@@ -275,6 +278,47 @@ def _revisar(vagas: list[dict], ref: str, modelo: str, empresa: str) -> int:
     return 1 if erros else 0
 
 
+def _id_da_ref(ref: str) -> str | None:
+    m = re.search(r"(\d+)\s*/?\s*$", ref.split("?")[0])
+    return m.group(1) if m else None
+
+
+def _importar(refs: list[str], destino, modelo: str, empresa: str, buscar: Callable[[str], dict]) -> int:
+    """Baixa vagas (inclusive encerradas) pelo id e grava as válidas em historico/."""
+    from pathlib import Path
+
+    historico_dir = Path(destino) / "historico"
+    importadas: set[str] = set()
+    for ref in refs:
+        id_vaga = _id_da_ref(ref)
+        if not id_vaga or id_vaga in importadas:
+            if not id_vaga:
+                print(f"{ref}: não parece um id ou link de vaga da Sólides")
+            continue
+        try:
+            v = buscar(URL_VAGA.format(id=id_vaga))
+        except (OSError, ValueError) as e:
+            print(f"{id_vaga}: não foi possível acessar a Sólides ({e})")
+            continue
+        if not isinstance(v, dict) or "id" not in v:
+            print(f"{id_vaga}: não encontrada na Sólides")
+            continue
+        if (v.get("slug") or "").lower() != empresa.lower():
+            print(f"{id_vaga}: ignorada — a vaga não é da empresa '{empresa}'")
+            continue
+        texto = vaga_para_exemplo(v, slug=empresa)
+        if erros := _validar_exemplo(texto, modelo):
+            print(f"{id_vaga}: ignorada ({v['title'].strip()}) — {'; '.join(erros[:3])}")
+            continue
+        historico_dir.mkdir(parents=True, exist_ok=True)
+        (historico_dir / f"solides-{v['id']}-{_slug(v['title'])}.md").write_text(texto, encoding="utf-8")
+        importadas.add(id_vaga)
+        print(f"{id_vaga}: importada ({v['title'].strip()}, {v.get('currentState') or 'status desconhecido'})")
+    n = len(importadas)
+    print(f"{n} {'vaga importada' if n == 1 else 'vagas importadas'} para {historico_dir}")
+    return 0 if n else 1
+
+
 def main(argv: list[str] | None = None, buscar: Callable[[str], dict] = _buscar_json) -> int:
     import argparse
     import sys
@@ -287,10 +331,13 @@ def main(argv: list[str] | None = None, buscar: Callable[[str], dict] = _buscar_
     parser = argparse.ArgumentParser(prog="python -m vaga.solides", description="Integração com a página de vagas da Sólides.")
     sub = parser.add_subparsers(dest="comando", required=True)
     for nome, ajuda in (("sincronizar", "atualiza os exemplos e o catálogo de benefícios a partir das vagas publicadas"),
-                        ("revisar", "baixa uma vaga publicada e roda o validador nela")):
+                        ("revisar", "baixa uma vaga publicada e roda o validador nela"),
+                        ("importar", "baixa vagas pelo id (inclusive encerradas) e grava no histórico")):
         p = sub.add_parser(nome, help=ajuda)
         if nome == "revisar":
             p.add_argument("vaga", help="id ou link da vaga na Sólides")
+        if nome == "importar":
+            p.add_argument("vagas", nargs="+", help="ids ou links das vagas na Sólides")
         p.add_argument("--empresa", default="ikatec", help="slug da empresa na Sólides (padrão: ikatec)")
         p.add_argument("--destino", default=DESTINO_PADRAO, help="pasta de referências da skill")
     try:
@@ -303,6 +350,8 @@ def main(argv: list[str] | None = None, buscar: Callable[[str], dict] = _buscar_
     except OSError as e:
         print(f"erro: modelo de vaga não encontrado em {args.destino}: {e}", file=sys.stderr)
         return 2
+    if args.comando == "importar":
+        return _importar(args.vagas, args.destino, modelo, args.empresa, buscar)
     try:
         vagas = baixar_vagas(args.empresa, buscar=buscar)
     except ErroSolides as e:

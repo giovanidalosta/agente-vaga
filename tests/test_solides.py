@@ -150,7 +150,8 @@ def test_sincronizar_grava_exemplos_validos_e_beneficios(tmp_path, capsys):
     nomes = sorted(p.name for p in (destino / "exemplos").iterdir())
     assert "solides-945675-analista-de-suporte-tecnico-jr.md" in nomes
     assert len([n for n in nomes if n.startswith("solides-")]) == 4  # banco de talentos fica de fora
-    assert "solides-1-vaga-fechada.md" not in nomes  # vaga que saiu do ar é removida
+    assert "solides-1-vaga-fechada.md" not in nomes  # vaga que saiu do ar sai dos exemplos...
+    assert (destino / "historico" / "solides-1-vaga-fechada.md").read_text(encoding="utf-8") == "fechada"  # ...e vai para o histórico
     assert "manual-antigo.md" in nomes  # exemplos escritos à mão são preservados
     assert (destino / "beneficios.md").read_text(encoding="utf-8").startswith("# Benefícios publicados na Sólides")
     saida = capsys.readouterr().out
@@ -191,3 +192,49 @@ def test_revisar_aponta_problemas(tmp_path, capsys):
 def test_revisar_vaga_inexistente(tmp_path, capsys):
     assert main(["revisar", "123", "--destino", str(preparar_destino(tmp_path))], buscar=api_fixture) == 2
     assert "vaga 123 não está aberta na Sólides" in capsys.readouterr().err
+
+
+def test_exemplo_tem_data_de_criacao():
+    assert "· criada em 2026-10-28" in vaga_para_exemplo(vagas_reais()[0])
+
+
+# --- CLI: importar (vagas encerradas, por id) ----------------------------------------
+
+def api_por_id(vagas_por_id):
+    def buscar(url):
+        id_ = url.rstrip("/").rsplit("/", 1)[1]
+        return vagas_por_id.get(id_, {"message": "Vacancy not found"})
+    return buscar
+
+
+def vaga_encerrada(id_, slug="ikatec"):
+    v = dict(vagas_reais()[0])
+    v.update(id=id_, slug=slug, currentState="concluido", title="Analista de Suporte Técnico JR")
+    return v
+
+
+def test_importar_grava_no_historico(tmp_path, capsys):
+    destino = preparar_destino(tmp_path)
+    buscar = api_por_id({"812345": vaga_encerrada(812345)})
+    assert main(["importar", "812345", "https://ikatec.vagas.solides.com.br/vaga/812345", "--destino", str(destino)], buscar=buscar) == 0
+    arquivo = destino / "historico" / "solides-812345-analista-de-suporte-tecnico-jr.md"
+    assert arquivo.exists()
+    assert "1 vaga importada" in capsys.readouterr().out
+
+
+def test_importar_recusa_vaga_de_outra_empresa(tmp_path, capsys):
+    destino = preparar_destino(tmp_path)
+    buscar = api_por_id({"777": vaga_encerrada(777, slug="outraempresa")})
+    assert main(["importar", "777", "--destino", str(destino)], buscar=buscar) == 1
+    assert "não é da empresa 'ikatec'" in capsys.readouterr().out
+    assert not (destino / "historico").exists()
+
+
+def test_importar_vaga_inexistente_e_invalida(tmp_path, capsys):
+    destino = preparar_destino(tmp_path)
+    ruim = vaga_encerrada(555)
+    ruim["description"] = "<p>Só um parágrafo.</p>"
+    buscar = api_por_id({"555": ruim})
+    assert main(["importar", "999", "555", "--destino", str(destino)], buscar=buscar) == 1
+    saida = capsys.readouterr().out
+    assert "999: não encontrada" in saida and "555" in saida and "seção ausente" in saida
