@@ -54,3 +54,9 @@ def test_placeholder_em_titulo_do_modelo(tmp_path, capsys):
     d = escrever(tmp_path, "d.md", "## Requisitos\n")
     assert main([d, "--modelo", m]) == 2
     assert "modelo tem placeholder no título: 'Sobre a vaga de [Cargo]'" in capsys.readouterr().err
+
+
+def test_secao_opcional_no_modelo(tmp_path, capsys):
+    m = escrever(tmp_path, "m.md", "## A\n## B (opcional)\n## C\n")
+    d = escrever(tmp_path, "d.md", "## A\n## C\n")
+    assert main([d, "--modelo", m]) == 0

@@ -8,7 +8,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from vaga.modelo import secoes_do_modelo
+from vaga.modelo import secoes_do_modelo, secoes_opcionais_do_modelo
 from vaga.validador import PLACEHOLDERS, validar_descricao
 
 
@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
                   file=sys.stderr)
             return 2
 
-    erros = validar_descricao(descricao, secoes, args.exigir)
+    erros = validar_descricao(descricao, secoes, args.exigir, secoes_opcionais_do_modelo(modelo))
     if erros:
         print("\n".join(erros))
         return 1

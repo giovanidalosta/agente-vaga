@@ -13,3 +13,12 @@ def test_ignora_titulos_em_bloco_de_codigo():
 
 def test_modelo_sem_secoes():
     assert secoes_do_modelo("só texto") == []
+
+
+from vaga.modelo import secoes_opcionais_do_modelo
+
+
+def test_secao_opcional_tem_marcador_removido():
+    texto = "## Requisitos\n## Diferenciais (opcional)\n## Soft Skills\n"
+    assert secoes_do_modelo(texto) == ["Requisitos", "Diferenciais", "Soft Skills"]
+    assert secoes_opcionais_do_modelo(texto) == {"Diferenciais"}

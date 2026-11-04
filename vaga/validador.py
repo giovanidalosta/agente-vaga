@@ -5,8 +5,13 @@ import re
 
 from vaga.modelo import secoes_do_modelo
 
+# Tags usadas nos títulos das vagas da Ikatec, ex.: "Analista JR [PRESENCIAL]".
+_TAGS_TITULO = r"PRESENCIAL|H[IÍ]BRIDO|REMOTO|HOME OFFICE|BANCO DE TALENTOS"
+
 PLACEHOLDERS: list[re.Pattern] = [
-    re.compile(r"\[[^\]\n]{1,60}\](?!\()"),  # colchete que não é link Markdown
+    # colchete que não é link Markdown nem tag de título
+    re.compile(r"\[(?!(?:" + _TAGS_TITULO + r")\])[^\]\n]{1,60}\](?!\()", re.IGNORECASE),
+    re.compile(r"_{3,}"),  # lacuna do modelo ("um(a) __________")
     re.compile(r"\{[^}\n]{1,60}\}"),
     re.compile(r"\bTODO\b"),  # case-sensitive: "todo" é palavra comum em português
     re.compile(r"\bXXX\b"),
@@ -48,15 +53,15 @@ LIMITE_ANOS = _ci(r"\bat[ée] \d{2} anos\b")
 CONTEXTO_NAO_CANDIDATO = _ci(r"dependente|filh|empresa|mercado|hist[óo]ria|experi[êe]ncia")
 
 
-def _verificar_secoes(descricao: str, secoes: list[str]) -> list[str]:
+def _verificar_secoes(descricao: str, secoes: list[str], opcionais: set[str]) -> list[str]:
     presentes = secoes_do_modelo(descricao)
-    ausentes = [s for s in secoes if s not in presentes]
+    ausentes = [s for s in secoes if s not in presentes and s not in opcionais]
     if ausentes:
         return [f"seção ausente: '{s}'" for s in ausentes]
-    ordem = [s for s in presentes if s in secoes]
     # remove repetições mantendo a primeira ocorrência
-    ordem = list(dict.fromkeys(ordem))
-    return [] if ordem == secoes else ["seções fora da ordem do modelo"]
+    ordem = list(dict.fromkeys(s for s in presentes if s in secoes))
+    esperada = [s for s in secoes if s in ordem]
+    return [] if ordem == esperada else ["seções fora da ordem do modelo"]
 
 
 def _termos_discriminatorios(descricao: str) -> list[str]:
@@ -71,9 +76,10 @@ def _termos_discriminatorios(descricao: str) -> list[str]:
     return [f"termo discriminatório: '{t}'" for t in achados]
 
 
-def validar_descricao(descricao: str, secoes: list[str], termos_obrigatorios: list[str] = []) -> list[str]:
-    """Lista de erros da descrição (vazia se válida)."""
-    erros = _verificar_secoes(descricao, secoes)
+def validar_descricao(descricao: str, secoes: list[str], termos_obrigatorios: list[str] = [],
+                      opcionais: set[str] = frozenset()) -> list[str]:
+    """Lista de erros da descrição (vazia se válida). Seções em `opcionais` podem faltar."""
+    erros = _verificar_secoes(descricao, secoes, set(opcionais))
     texto_min = descricao.casefold()
     erros += [f"termo obrigatório ausente: '{t}'" for t in termos_obrigatorios if t.casefold() not in texto_min]
     erros += [f"placeholder não preenchido: '{m.group(0)}'"

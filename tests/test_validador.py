@@ -77,3 +77,26 @@ def test_frases_legitimas_nao_sao_discriminatorias(linha):
 def test_variacoes_discriminatorias(linha):
     erros = validar_descricao(OK + linha + "\n", SECOES)
     assert any(e.startswith("termo discriminatório") for e in erros)
+
+
+SECOES_OPC = ["Responsabilidades", "Requisitos", "Diferenciais", "Soft Skills"]
+
+
+def test_secao_opcional_pode_faltar():
+    texto = "## Responsabilidades\n## Requisitos\n## Soft Skills\n"
+    assert validar_descricao(texto, SECOES_OPC, opcionais={"Diferenciais"}) == []
+
+
+def test_secao_opcional_presente_respeita_ordem():
+    texto = "## Responsabilidades\n## Diferenciais\n## Requisitos\n## Soft Skills\n"
+    assert validar_descricao(texto, SECOES_OPC, opcionais={"Diferenciais"}) == ["seções fora da ordem do modelo"]
+
+
+def test_lacuna_sublinhada_e_placeholder():
+    erros = validar_descricao(OK + "A Ikatec está em busca de um(a) __________\n", SECOES)
+    assert any(e.startswith("placeholder não preenchido") for e in erros)
+
+
+@pytest.mark.parametrize("tag", ["[PRESENCIAL]", "[Híbrido]", "[REMOTO]", "[BANCO DE TALENTOS]"])
+def test_tag_de_titulo_nao_e_placeholder(tag):
+    assert validar_descricao("# Analista JR " + tag + "\n" + OK, SECOES) == []

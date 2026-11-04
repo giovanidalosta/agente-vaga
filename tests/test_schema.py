@@ -38,3 +38,10 @@ def test_presencial_exige_local():
 def test_itens_vazios_de_lista_sao_descartados():
     _, erros = validar_entrada({**BASE, "requisitos": ["", "  "]})
     assert erros == ["requisitos precisa de ao menos 1 item"]
+
+
+def test_soft_skills_opcional():
+    vaga, erros = validar_entrada({**BASE, "soft_skills": ["Comunicação", " "]})
+    assert erros == [] and vaga.soft_skills == ["Comunicação"]
+    vaga, _ = validar_entrada(BASE)
+    assert vaga.soft_skills == []

@@ -20,6 +20,7 @@ class Vaga:
     requisitos: list[str]
     diferenciais: list[str] = field(default_factory=list)
     beneficios: list[str] = field(default_factory=list)
+    soft_skills: list[str] = field(default_factory=list)
     faixa_salarial: str = ""
 
 
@@ -87,5 +88,6 @@ def validar_entrada(dados: dict) -> tuple[Vaga | None, list[str]]:
         requisitos=requisitos,
         diferenciais=_lista(dados.get("diferenciais")),
         beneficios=_lista(dados.get("beneficios")),
+        soft_skills=_lista(dados.get("soft_skills")),
         faixa_salarial=_texto(dados.get("faixa_salarial")),
     ), []
