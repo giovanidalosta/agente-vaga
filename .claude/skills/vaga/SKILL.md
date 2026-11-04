@@ -14,7 +14,8 @@ O resultado tem duas partes:
 ## Outros pedidos
 
 - **Revisar uma vaga publicada** ("/vaga revisar <link ou id da Sólides>"): rode `python -X utf8 -m vaga.solides revisar "<link ou id>"`. Mostre a vaga e o resultado da validação. Se houver problemas, proponha o texto corrigido no formato do passo 7, sem salvar nada a menos que o usuário peça. Código de saída 2 significa que a vaga não está aberta ou que a Sólides não respondeu: mostre a mensagem.
-- **Atualizar as referências** ("/vaga atualizar exemplos"): rode `python -X utf8 -m vaga.solides sincronizar`. O comando baixa as vagas abertas, regrava os exemplos `solides-*.md` e o catálogo `referencias/beneficios.md`. Mostre o resumo que ele imprimir.
+- **Atualizar as referências** ("/vaga atualizar exemplos"): rode `python -X utf8 -m vaga.solides sincronizar`. O comando baixa as vagas abertas, regrava os exemplos `solides-*.md` e o catálogo `referencias/beneficios.md`. Mostre o resumo que ele imprimir. As vagas que saíram do ar são movidas para `referencias/historico/`.
+- **Importar vagas antigas** ("/vaga importar <links ou ids>"): rode `python -X utf8 -m vaga.solides importar <ids ou links> --desde AAAA-MM-DD`. As vagas, inclusive as encerradas, vão para `referencias/historico/` e alimentam as sugestões do passo 1b. Os IDs aparecem nos links do painel da Sólides (`/selective-process/<id>`).
 
 Nos outros casos, siga os passos abaixo para criar uma vaga.
 
@@ -48,6 +49,27 @@ Use o que o usuário já informou, inclusive na mensagem que chamou `/vaga`.
 - **No terminal ou sem `show_widget`**: mande de uma vez só um bloco para o usuário copiar e preencher, só com os campos que faltam, na ordem da tabela e com as opções dos campos de lista fechada, por exemplo `Senioridade (Estágio, Júnior, Pleno, Sênior, Especialista, Liderança):`. Diga numa linha que os opcionais podem ser informados.
 
 Se o usuário já trouxe todos os obrigatórios, não mostre o formulário.
+
+### 1b. Sugerir responsabilidades, requisitos e soft skills
+
+Se, depois do passo anterior, **responsabilidades, requisitos ou soft skills** continuarem vazios e você já souber o cargo, rode:
+
+```bash
+python -X utf8 -m vaga.base sugerir --cargo "<cargo>" --senioridade "<senioridade>"
+```
+
+O comando busca nas vagas da Ikatec (`referencias/historico/` e `referencias/exemplos/`) a **vaga mais recente do mesmo cargo**, que é a fonte principal porque cada vaga nova é aberta com as informações mais atualizadas. Ele prefere o mesmo nível; seções obrigatórias que faltarem vêm da vaga anterior do mesmo cargo, e Diferenciais vem só da vaga principal.
+
+- **Código 0 (`"encontrado": true`):** sugira só as seções que o recrutador **não** informou. Nunca troque o que ele escreveu.
+  - **No app:** leia `referencias/formulario-sugestoes.html`, remova os grupos das seções que já foram informadas ou que não vieram na sugestão, e troque:
+    - `{{RESPONSABILIDADES}}`, `{{REQUISITOS}}`, `{{DIFERENCIAIS}}` e `{{SOFT_SKILLS}}` pelos itens, um por linha, com `&`, `<` e `>` escapados;
+    - `{{ORIGEM_…}}` por "Da vaga <título> (<mês/ano>)", acrescentando ", nível <senioridade>" quando `nivel_diferente` for true.
+    Mostre com `show_widget` (o `read_me` de `elicitation` já foi carregado no passo 1; se não foi, carregue). Se vier "Skipped the form" ("Usar como está"), use as sugestões sem mudanças.
+  - **No terminal:** mostre as seções sugeridas como listas, com a origem de cada uma, e pergunte numa linha se pode usar assim ou o que mudar.
+  - Se `nivel_diferente` for true, avise que a vaga de referência é de outro nível e que vale ajustar o nível de exigência.
+- **Código 1 (`"encontrado": false`):** não há vaga parecida. Mostre os `parecidos`, se houver, e pergunte se é um desses cargos. Senão, sugira itens com base no seu conhecimento, marcados como **sugestão genérica**, para o recrutador revisar.
+
+As sugestões são o ponto de partida. No passo 4 você pode reescrever e detalhar os itens no tom dos exemplos, sem acrescentar fatos novos.
 
 O recrutador costuma mandar poucos tópicos. Você pode desenvolver e detalhar o que ele informou, no nível de detalhe dos exemplos, sem acrescentar fatos novos (ver passo 4).
 
