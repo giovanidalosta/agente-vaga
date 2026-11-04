@@ -124,3 +124,70 @@ def test_beneficios_markdown():
 def test_pacote_real_clt_tem_plano_de_saude():
     _, itens = pacote_beneficios(vagas_reais())["CLT"]
     assert any("Plano de saúde" in nome for nome, _ in itens)
+
+
+# --- CLI: sincronizar / revisar ---------------------------------------------------
+
+from vaga.solides import main
+
+
+def api_fixture(url):
+    return json.loads(FIXTURE.read_text(encoding="utf-8"))
+
+
+def preparar_destino(tmp_path):
+    destino = tmp_path / "referencias"
+    (destino / "exemplos").mkdir(parents=True)
+    (destino / "modelo-vaga.md").write_text(MODELO.read_text(encoding="utf-8"), encoding="utf-8")
+    (destino / "exemplos" / "manual-antigo.md").write_text("antigo", encoding="utf-8")
+    (destino / "exemplos" / "solides-1-vaga-fechada.md").write_text("fechada", encoding="utf-8")
+    return destino
+
+
+def test_sincronizar_grava_exemplos_validos_e_beneficios(tmp_path, capsys):
+    destino = preparar_destino(tmp_path)
+    assert main(["sincronizar", "--destino", str(destino)], buscar=api_fixture) == 0
+    nomes = sorted(p.name for p in (destino / "exemplos").iterdir())
+    assert "solides-945675-analista-de-suporte-tecnico-jr.md" in nomes
+    assert len([n for n in nomes if n.startswith("solides-")]) == 4  # banco de talentos fica de fora
+    assert "solides-1-vaga-fechada.md" not in nomes  # vaga que saiu do ar é removida
+    assert "manual-antigo.md" in nomes  # exemplos escritos à mão são preservados
+    assert (destino / "beneficios.md").read_text(encoding="utf-8").startswith("# Benefícios publicados na Sólides")
+    saida = capsys.readouterr().out
+    assert "4 exemplos atualizados" in saida and "398916" in saida
+
+
+def test_sincronizar_sem_vagas_validas_nao_apaga_nada(tmp_path, capsys):
+    destino = preparar_destino(tmp_path)
+    vazia = lambda url: {"totalPages": 1, "currentPage": 1, "count": 0, "data": []}
+    assert main(["sincronizar", "--destino", str(destino)], buscar=vazia) == 1
+    assert (destino / "exemplos" / "solides-1-vaga-fechada.md").exists()
+    assert not (destino / "beneficios.md").exists()
+
+
+def test_sincronizar_sem_rede(tmp_path, capsys):
+    def falha(url):
+        raise OSError("sem rede")
+
+    assert main(["sincronizar", "--destino", str(preparar_destino(tmp_path))], buscar=falha) == 2
+    assert "não foi possível acessar a Sólides" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("ref", ["945675", "https://ikatec.vagas.solides.com.br/vaga/945675"])
+def test_revisar_vaga_publicada(ref, tmp_path, capsys):
+    destino = preparar_destino(tmp_path)
+    assert main(["revisar", ref, "--destino", str(destino)], buscar=api_fixture) == 0
+    saida = capsys.readouterr().out
+    assert "# Analista de Suporte Técnico JR" in saida and saida.rstrip().endswith("Validação: OK")
+
+
+def test_revisar_aponta_problemas(tmp_path, capsys):
+    dados = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    dados["data"][0]["description"] += "<p>Requisito: boa aparência.</p>"
+    assert main(["revisar", "945675", "--destino", str(preparar_destino(tmp_path))], buscar=lambda url: dados) == 1
+    assert "termo discriminatório: 'boa aparência'" in capsys.readouterr().out
+
+
+def test_revisar_vaga_inexistente(tmp_path, capsys):
+    assert main(["revisar", "123", "--destino", str(preparar_destino(tmp_path))], buscar=api_fixture) == 2
+    assert "vaga 123 não está aberta na Sólides" in capsys.readouterr().err

@@ -209,3 +209,112 @@ def vaga_para_exemplo(v: dict, slug: str = "ikatec") -> str:
         html_para_markdown(v.get("description") or ""),
     ]
     return "\n\n".join(partes) + "\n"
+
+
+# --- CLI ------------------------------------------------------------------------
+#   python -m vaga.solides sincronizar [--empresa ikatec] [--destino DIR]
+#   python -m vaga.solides revisar <id ou link da vaga> [--empresa ikatec] [--destino DIR]
+
+DESTINO_PADRAO = ".claude/skills/vaga/referencias"
+
+
+def _slug(texto: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", _chave(texto)).strip("-")
+
+
+def _validar_exemplo(texto: str, modelo: str) -> list[str]:
+    from vaga.modelo import secoes_do_modelo, secoes_opcionais_do_modelo
+    from vaga.validador import validar_descricao
+
+    return validar_descricao(texto, secoes_do_modelo(modelo), opcionais=secoes_opcionais_do_modelo(modelo))
+
+
+def _sincronizar(vagas: list[dict], destino, modelo: str, empresa: str) -> int:
+    from datetime import date
+    from pathlib import Path
+
+    exemplos_dir = Path(destino) / "exemplos"
+    novos: dict[str, str] = {}
+    for v in vagas:
+        texto = vaga_para_exemplo(v, slug=empresa)
+        erros = _validar_exemplo(texto, modelo)
+        if erros:
+            print(f"ignorada: vaga {v['id']} ({v['title'].strip()}) — {'; '.join(erros[:3])}")
+            continue
+        novos[f"solides-{v['id']}-{_slug(v['title'])}.md"] = texto
+
+    if not novos:
+        print("nenhuma vaga publicada passou no validador; exemplos e benefícios não foram alterados.")
+        return 1
+
+    exemplos_dir.mkdir(parents=True, exist_ok=True)
+    for antigo in exemplos_dir.glob("solides-*.md"):
+        if antigo.name not in novos:
+            antigo.unlink()
+            print(f"removido: {antigo.name} (vaga não está mais aberta)")
+    for nome, texto in novos.items():
+        (exemplos_dir / nome).write_text(texto, encoding="utf-8")
+    (Path(destino) / "beneficios.md").write_text(
+        beneficios_markdown(pacote_beneficios(vagas), data=date.today().isoformat()), encoding="utf-8")
+    print(f"{len(novos)} exemplos atualizados em {exemplos_dir}; benefícios em {Path(destino) / 'beneficios.md'}")
+    return 0
+
+
+def _revisar(vagas: list[dict], ref: str, modelo: str, empresa: str) -> int:
+    import sys
+
+    id_vaga = re.search(r"(\d+)\s*/?\s*$", ref.split("?")[0])
+    v = next((v for v in vagas if id_vaga and str(v["id"]) == id_vaga.group(1)), None)
+    if v is None:
+        print(f"erro: vaga {ref} não está aberta na Sólides de '{empresa}'.", file=sys.stderr)
+        return 2
+    texto = vaga_para_exemplo(v, slug=empresa)
+    erros = _validar_exemplo(texto, modelo)
+    print(texto)
+    print("Validação: OK" if not erros else "Validação: problemas encontrados\n" + "\n".join(f"- {e}" for e in erros))
+    return 1 if erros else 0
+
+
+def main(argv: list[str] | None = None, buscar: Callable[[str], dict] = _buscar_json) -> int:
+    import argparse
+    import sys
+    from pathlib import Path
+
+    from vaga.validar import _utf8
+
+    _utf8(sys.stdout)
+    _utf8(sys.stderr)
+    parser = argparse.ArgumentParser(prog="python -m vaga.solides", description="Integração com a página de vagas da Sólides.")
+    sub = parser.add_subparsers(dest="comando", required=True)
+    for nome, ajuda in (("sincronizar", "atualiza os exemplos e o catálogo de benefícios a partir das vagas publicadas"),
+                        ("revisar", "baixa uma vaga publicada e roda o validador nela")):
+        p = sub.add_parser(nome, help=ajuda)
+        if nome == "revisar":
+            p.add_argument("vaga", help="id ou link da vaga na Sólides")
+        p.add_argument("--empresa", default="ikatec", help="slug da empresa na Sólides (padrão: ikatec)")
+        p.add_argument("--destino", default=DESTINO_PADRAO, help="pasta de referências da skill")
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit as e:
+        return 2 if e.code else 0
+
+    try:
+        modelo = (Path(args.destino) / "modelo-vaga.md").read_text(encoding="utf-8-sig")
+    except OSError as e:
+        print(f"erro: modelo de vaga não encontrado em {args.destino}: {e}", file=sys.stderr)
+        return 2
+    try:
+        vagas = baixar_vagas(args.empresa, buscar=buscar)
+    except ErroSolides as e:
+        print(f"erro: {e}", file=sys.stderr)
+        return 2
+
+    if args.comando == "sincronizar":
+        return _sincronizar(vagas, args.destino, modelo, args.empresa)
+    return _revisar(vagas, args.vaga, modelo, args.empresa)
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main())
