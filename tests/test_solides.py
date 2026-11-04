@@ -66,3 +66,61 @@ def test_vagas_reais_convertidas_passam_no_validador(v):
     modelo = MODELO.read_text(encoding="utf-8")
     erros = validar_descricao(vaga_para_exemplo(v), secoes_do_modelo(modelo), opcionais=secoes_opcionais_do_modelo(modelo))
     assert erros == []
+
+
+# --- baixar_vagas ---------------------------------------------------------------
+
+from vaga.solides import ErroSolides, baixar_vagas, beneficios_markdown, pacote_beneficios
+
+
+def test_baixar_vagas_percorre_todas_as_paginas():
+    urls = []
+
+    def falsa(url):
+        urls.append(url)
+        pagina = int(url.split("page=")[1])
+        return {"totalPages": 2, "currentPage": pagina, "count": 3,
+                "data": [{"id": pagina * 10}] if pagina == 2 else [{"id": 1}, {"id": 2}]}
+
+    vagas = baixar_vagas("ikatec", buscar=falsa)
+    assert [v["id"] for v in vagas] == [1, 2, 20]
+    assert urls[0] == "https://apigw.solides.com.br/jobs/v3/companies/ikatec/vacancies?take=25&page=1"
+    assert len(urls) == 2
+
+
+def test_resposta_inesperada_vira_erro_claro():
+    with pytest.raises(ErroSolides, match="resposta inesperada da Sólides"):
+        baixar_vagas("ikatec", buscar=lambda url: {"code": "BadRequestException"})
+
+
+def test_falha_de_rede_vira_erro_claro():
+    def falha(url):
+        raise OSError("timed out")
+
+    with pytest.raises(ErroSolides, match="não foi possível acessar a Sólides"):
+        baixar_vagas("ikatec", buscar=falha)
+
+
+# --- benefícios -----------------------------------------------------------------
+
+def test_pacote_de_beneficios_por_contratacao():
+    vagas = [
+        {"recruitmentContractType": [{"name": "CLT"}], "benefits": [{"name": "PLR"}, {"name": "Wellhub"}]},
+        {"recruitmentContractType": [{"name": "CLT"}], "benefits": [{"name": "PLR"}]},
+        {"recruitmentContractType": [{"name": "PJ"}, {"name": "CLT"}], "benefits": [{"name": "Gympass"}]},
+    ]
+    pacotes = pacote_beneficios(vagas)
+    assert pacotes["CLT"] == (3, [("PLR", 2), ("Gympass", 1), ("Wellhub", 1)])
+    assert pacotes["PJ"] == (1, [("Gympass", 1)])
+
+
+def test_beneficios_markdown():
+    texto = beneficios_markdown({"CLT": (2, [("PLR", 2), ("Wellhub", 1)])}, data="2026-11-04")
+    assert texto.startswith("# Benefícios publicados na Sólides\n")
+    assert "2026-11-04" in texto
+    assert "## CLT (2 vagas)\n\n- PLR — 2 de 2 vagas\n- Wellhub — 1 de 2 vagas\n" in texto
+
+
+def test_pacote_real_clt_tem_plano_de_saude():
+    _, itens = pacote_beneficios(vagas_reais())["CLT"]
+    assert any("Plano de saúde" in nome for nome, _ in itens)

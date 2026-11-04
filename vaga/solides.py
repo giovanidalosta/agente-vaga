@@ -5,10 +5,72 @@ ikatec.vagas.solides.com.br). Ela não é documentada e pode mudar sem aviso.
 """
 from __future__ import annotations
 
+import json
 import re
+import urllib.request
+from collections import Counter
 from html.parser import HTMLParser
+from typing import Callable
 
 from vaga.schema import SENIORIDADES, _chave
+
+URL_VAGAS = "https://apigw.solides.com.br/jobs/v3/companies/{empresa}/vacancies?take=25&page={pagina}"  # API limita take a 25
+
+
+class ErroSolides(Exception):
+    """Falha ao consultar a API da Sólides (rede ou resposta em formato inesperado)."""
+
+
+def _buscar_json(url: str) -> dict:
+    pedido = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "agente-vaga"})
+    with urllib.request.urlopen(pedido, timeout=30) as resposta:
+        return json.load(resposta)
+
+
+def baixar_vagas(empresa: str = "ikatec", buscar: Callable[[str], dict] = _buscar_json) -> list[dict]:
+    """Todas as vagas publicadas da empresa na Sólides, percorrendo as páginas."""
+    vagas: list[dict] = []
+    pagina, total = 1, 1
+    while pagina <= total:
+        url = URL_VAGAS.format(empresa=empresa, pagina=pagina)
+        try:
+            dados = buscar(url)
+        except (OSError, ValueError) as e:  # URLError/HTTPError/timeout são OSError; JSON inválido é ValueError
+            raise ErroSolides(f"não foi possível acessar a Sólides ({url}): {e}") from None
+        if not isinstance(dados, dict) or not isinstance(dados.get("data"), list):
+            raise ErroSolides(f"resposta inesperada da Sólides ({url}): {str(dados)[:200]}")
+        vagas += dados["data"]
+        total = int(dados.get("totalPages") or 1)
+        pagina += 1
+    return vagas
+
+
+def pacote_beneficios(vagas: list[dict]) -> dict[str, tuple[int, list[tuple[str, int]]]]:
+    """Por tipo de contratação: (nº de vagas, [(benefício, nº de vagas que o oferecem)]), mais frequentes primeiro."""
+    contagem: dict[str, Counter] = {}
+    vagas_por_tipo: Counter = Counter()
+    for v in vagas:
+        beneficios = set(_nomes(v.get("benefits")))
+        for tipo in _nomes(v.get("recruitmentContractType")):
+            vagas_por_tipo[tipo] += 1
+            contagem.setdefault(tipo, Counter()).update(beneficios)
+    return {
+        tipo: (vagas_por_tipo[tipo], sorted(contagem[tipo].items(), key=lambda kv: (-kv[1], kv[0])))
+        for tipo in sorted(contagem)
+    }
+
+
+def beneficios_markdown(pacotes: dict[str, tuple[int, list[tuple[str, int]]]], data: str) -> str:
+    linhas = [
+        "# Benefícios publicados na Sólides",
+        "",
+        f"> Gerado por `python -m vaga.solides sincronizar` em {data}, a partir das vagas abertas. Não edite à mão.",
+        "> A skill sugere o pacote do tipo de contratação; o recrutador confirma ou ajusta.",
+    ]
+    for tipo, (n, itens) in pacotes.items():
+        linhas += ["", f"## {tipo} ({n} {'vaga' if n == 1 else 'vagas'})", ""]
+        linhas += [f"- {nome} — {qtd} de {n} {'vaga' if n == 1 else 'vagas'}" for nome, qtd in itens]
+    return "\n".join(linhas) + "\n"
 
 # --- HTML da descrição → Markdown no formato dos exemplos ---------------------
 
