@@ -83,9 +83,26 @@ ALIASES_SECAO: dict[str, str] = {
     "hard skills": "Requisitos",
     "requisitos tecnicos": "Requisitos",
     "qualificacoes": "Requisitos",
+    "principais responsabilidades": "Responsabilidades",
+    "atividades e responsabilidades": "Responsabilidades",
+    "requisito": "Requisitos",
+    "requisitos da vaga": "Requisitos",
+    "habilidades e requisitos": "Requisitos",
+    "habilidades e conhecimento": "Requisitos",
     "diferenciais": "Diferenciais",
+    "diferencial": "Diferenciais",
     "soft skills": "Soft Skills",
+    "soft skill": "Soft Skills",
     "competencias comportamentais": "Soft Skills",
+}
+
+# Outros títulos que aparecem nas vagas: viram seção própria e encerram a lista anterior,
+# para que benefícios ou horário não sejam lidos como responsabilidades.
+SECOES_EXTRAS: set[str] = {
+    "beneficios", "beneficios para pj", "beneficios clt ou pj", "beneficios oferecidos tambem no modelo pj",
+    "oferecemos", "sobre", "sobre o estagio", "sobre a vaga", "descricao da vaga", "objetivo do cargo",
+    "local de trabalho", "carga horaria", "atencao", "atencao aos requisitos da vaga",
+    "desenvolvimento profissional", "o que voce vai aprender e desenvolver",
 }
 
 # Linhas que encerram uma lista e voltam a ser parágrafo.
@@ -129,7 +146,14 @@ class _Linhas(HTMLParser):
 
 
 def _secao(texto: str) -> str | None:
-    return ALIASES_SECAO.get(_chave(texto.rstrip(":").strip()))
+    """Nome da seção se a linha for um título conhecido ("[Atividades]" → "Responsabilidades"), senão None."""
+    limpo = texto.strip().lstrip("?•").strip().strip("[]").rstrip(":").strip()
+    chave = _chave(limpo)
+    if chave in ALIASES_SECAO:
+        return ALIASES_SECAO[chave]
+    if chave in SECOES_EXTRAS:
+        return limpo[:1].upper() + limpo[1:]
+    return None
 
 
 def html_para_markdown(html: str) -> str:
@@ -230,6 +254,18 @@ def _validar_exemplo(texto: str, modelo: str) -> list[str]:
     return validar_descricao(texto, secoes_do_modelo(modelo), opcionais=secoes_opcionais_do_modelo(modelo))
 
 
+def _validar_historico(texto: str) -> list[str]:
+    """Critério do histórico: vagas antigas não seguem o modelo atual, então só exigimos
+    alguma seção aproveitável e barramos termos discriminatórios."""
+    from vaga.modelo import secoes_do_modelo
+    from vaga.validador import _termos_discriminatorios
+
+    erros = _termos_discriminatorios(texto)
+    if not {"Responsabilidades", "Requisitos"} & set(secoes_do_modelo(texto)):
+        erros.insert(0, "nenhuma seção de responsabilidades ou requisitos reconhecida")
+    return erros
+
+
 def _sincronizar(vagas: list[dict], destino, modelo: str, empresa: str) -> int:
     from datetime import date
     from pathlib import Path
@@ -312,7 +348,7 @@ def _importar(refs: list[str], destino, modelo: str, empresa: str, buscar: Calla
             print(f"{id_vaga}: ignorada — criada em {criada}, antes de {desde}")
             continue
         texto = vaga_para_exemplo(v, slug=empresa)
-        if erros := _validar_exemplo(texto, modelo):
+        if erros := _validar_historico(texto):
             print(f"{id_vaga}: ignorada ({v['title'].strip()}) — {'; '.join(erros[:3])}")
             continue
         historico_dir.mkdir(parents=True, exist_ok=True)

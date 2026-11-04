@@ -237,7 +237,7 @@ def test_importar_vaga_inexistente_e_invalida(tmp_path, capsys):
     buscar = api_por_id({"555": ruim})
     assert main(["importar", "999", "555", "--destino", str(destino)], buscar=buscar) == 1
     saida = capsys.readouterr().out
-    assert "999: não encontrada" in saida and "555" in saida and "seção ausente" in saida
+    assert "999: não encontrada" in saida and "555" in saida and "nenhuma seção de responsabilidades ou requisitos" in saida
 
 
 def test_importar_desde_ignora_vagas_antigas(tmp_path, capsys):
@@ -248,3 +248,38 @@ def test_importar_desde_ignora_vagas_antigas(tmp_path, capsys):
     assert main(["importar", "1001", "1002", "--desde", "2025-01-01", "--destino", str(destino)], buscar=buscar) == 0
     assert [p.name.split("-")[1] for p in (destino / "historico").iterdir()] == ["1002"]
     assert "1001: ignorada — criada em 2024-12-20, antes de 2025-01-01" in capsys.readouterr().out
+
+
+# --- títulos usados em vagas antigas e histórico tolerante ---------------------------
+
+@pytest.mark.parametrize("titulo,secao", [
+    ("[Atividades]", "Responsabilidades"), ("Principais responsabilidades", "Responsabilidades"),
+    ("Atividades e responsabilidades", "Responsabilidades"), ("[Hard Skills]", "Requisitos"),
+    ("[Requisito]", "Requisitos"), ("Requisitos da vaga", "Requisitos"), ("[Habilidades e requisitos]", "Requisitos"),
+    ("Diferencial", "Diferenciais"), ("[Soft Skills]", "Soft Skills"), ("Soft skill", "Soft Skills"),
+])
+def test_aliases_de_titulos_antigos(titulo, secao):
+    assert html_para_markdown(f"<p><strong>{titulo}</strong></p><ul><li>Item.</li></ul>") == f"## {secao}\n\n- Item."
+
+
+def test_secao_extra_encerra_a_lista_anterior():
+    html = "<p><b>Requisitos</b></p><ul><li>Python.</li></ul><p><b>[Benefícios]</b></p><ul><li>PLR.</li></ul>"
+    assert html_para_markdown(html) == "## Requisitos\n\n- Python.\n\n## Benefícios\n\n- PLR."
+
+
+def test_importar_aceita_vaga_antiga_fora_do_modelo(tmp_path, capsys):
+    v = vaga_encerrada(2001)
+    v["title"] = "Executivo de Negócios [SÃO PAULO/SP]"
+    v["description"] = "<p>Intro.</p><p><b>[Atividades]</b></p><ul><li>Prospectar clientes.</li></ul><p><b>Requisitos</b></p><ul><li>CRM.</li></ul>"
+    destino = preparar_destino(tmp_path)
+    assert main(["importar", "2001", "--destino", str(destino)], buscar=api_por_id({"2001": v})) == 0
+    texto = next((destino / "historico").iterdir()).read_text(encoding="utf-8")
+    assert "## Responsabilidades\n\n- Prospectar clientes." in texto
+
+
+def test_importar_barra_termo_discriminatorio(tmp_path, capsys):
+    v = vaga_encerrada(2002)
+    v["description"] += "<p>Requisito: boa aparência.</p>"
+    destino = preparar_destino(tmp_path)
+    assert main(["importar", "2002", "--destino", str(destino)], buscar=api_por_id({"2002": v})) == 1
+    assert "termo discriminatório" in capsys.readouterr().out
