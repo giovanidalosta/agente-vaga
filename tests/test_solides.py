@@ -238,3 +238,13 @@ def test_importar_vaga_inexistente_e_invalida(tmp_path, capsys):
     assert main(["importar", "999", "555", "--destino", str(destino)], buscar=buscar) == 1
     saida = capsys.readouterr().out
     assert "999: não encontrada" in saida and "555" in saida and "seção ausente" in saida
+
+
+def test_importar_desde_ignora_vagas_antigas(tmp_path, capsys):
+    destino = preparar_destino(tmp_path)
+    antiga, nova = vaga_encerrada(1001), vaga_encerrada(1002)
+    antiga["createdAt"], nova["createdAt"] = "2024-12-20", "2025-01-05"
+    buscar = api_por_id({"1001": antiga, "1002": nova})
+    assert main(["importar", "1001", "1002", "--desde", "2025-01-01", "--destino", str(destino)], buscar=buscar) == 0
+    assert [p.name.split("-")[1] for p in (destino / "historico").iterdir()] == ["1002"]
+    assert "1001: ignorada — criada em 2024-12-20, antes de 2025-01-01" in capsys.readouterr().out

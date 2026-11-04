@@ -283,7 +283,8 @@ def _id_da_ref(ref: str) -> str | None:
     return m.group(1) if m else None
 
 
-def _importar(refs: list[str], destino, modelo: str, empresa: str, buscar: Callable[[str], dict]) -> int:
+def _importar(refs: list[str], destino, modelo: str, empresa: str, buscar: Callable[[str], dict],
+              desde: str | None = None) -> int:
     """Baixa vagas (inclusive encerradas) pelo id e grava as válidas em historico/."""
     from pathlib import Path
 
@@ -305,6 +306,10 @@ def _importar(refs: list[str], destino, modelo: str, empresa: str, buscar: Calla
             continue
         if (v.get("slug") or "").lower() != empresa.lower():
             print(f"{id_vaga}: ignorada — a vaga não é da empresa '{empresa}'")
+            continue
+        criada = (v.get("createdAt") or "")[:10]
+        if desde and criada and criada < desde:
+            print(f"{id_vaga}: ignorada — criada em {criada}, antes de {desde}")
             continue
         texto = vaga_para_exemplo(v, slug=empresa)
         if erros := _validar_exemplo(texto, modelo):
@@ -338,6 +343,7 @@ def main(argv: list[str] | None = None, buscar: Callable[[str], dict] = _buscar_
             p.add_argument("vaga", help="id ou link da vaga na Sólides")
         if nome == "importar":
             p.add_argument("vagas", nargs="+", help="ids ou links das vagas na Sólides")
+            p.add_argument("--desde", metavar="AAAA-MM-DD", help="ignora vagas criadas antes desta data")
         p.add_argument("--empresa", default="ikatec", help="slug da empresa na Sólides (padrão: ikatec)")
         p.add_argument("--destino", default=DESTINO_PADRAO, help="pasta de referências da skill")
     try:
@@ -351,7 +357,7 @@ def main(argv: list[str] | None = None, buscar: Callable[[str], dict] = _buscar_
         print(f"erro: modelo de vaga não encontrado em {args.destino}: {e}", file=sys.stderr)
         return 2
     if args.comando == "importar":
-        return _importar(args.vagas, args.destino, modelo, args.empresa, buscar)
+        return _importar(args.vagas, args.destino, modelo, args.empresa, buscar, args.desde)
     try:
         vagas = baixar_vagas(args.empresa, buscar=buscar)
     except ErroSolides as e:
