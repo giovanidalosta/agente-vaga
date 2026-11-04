@@ -12,25 +12,40 @@ PLACEHOLDERS: list[re.Pattern] = [
     re.compile(r"\bXXX\b"),
 ]
 
+
+def _ci(padrao: str) -> re.Pattern:
+    return re.compile(padrao, re.IGNORECASE)
+
+
+# Sempre discriminatórios, em qualquer contexto.
 TERMOS_PROIBIDOS: list[re.Pattern] = [
-    re.compile(p, re.IGNORECASE)
+    _ci(p)
     for p in (
         r"boa apar[êe]ncia",
-        r"\bsexo (masculino|feminino)\b",
-        r"\b(apenas|somente) (homens|mulheres)\b",
-        r"\bidade (entre|m[áa]xima|m[íi]nima|at[ée])\b",
-        r"\bat[ée] \d{2} anos\b",
-        r"\bsolteir[oa](\(a\))?",
+        r"\bsexo\s*:?\s*(masculino|feminino)\b",
+        r"\b(apenas|somente|preferencialmente) (homens|mulheres)\b",
+        r"\bidade\s*:?\s*(entre|m[áa]xima|m[íi]nima|at[ée]|de \d)",
+        r"\bfaixa et[áa]ria\b",
+        r"\blimite de idade\b",
+        r"\bsolteir[oa]s?(\(a\))?",
+        r"\bcasad[oa]s?\b",
         r"\bsem filhos\b",
     )
 ]
 
-# Termos religiosos só contam fora de declarações de diversidade
-# ("contratamos sem distinção de religião" é legítimo).
-TERMOS_RELIGIOSOS = re.compile(r"\b(religi[ãa]o|crist[ãa]o|evang[ée]lic[oa])\b", re.IGNORECASE)
-CONTEXTO_DIVERSIDADE = re.compile(
-    r"diversidade|sem distin[çc][ãa]o|sem discrimina[çc][ãa]o|independente(mente)?|inclus", re.IGNORECASE
+# Discriminatórios, exceto em declarações de diversidade
+# ("não fazemos distinção de religião ou estado civil" é legítimo).
+CONTEXTO_DIVERSIDADE = _ci(
+    r"diversidade|distin[çc][ãa]o|discrimin|seja qual for|independente(mente)?|inclus|respeit|qualquer"
 )
+TERMOS_FORA_DE_DIVERSIDADE: list[re.Pattern] = [
+    _ci(r"\b(religi[ãa]o|crist[ãa](o|os|s)?|evang[ée]lic[oa]s?|cat[óo]lic[oa]s?)\b"),
+    _ci(r"\bestado civil\b"),
+]
+
+# "até NN anos" é limite de idade, exceto quando fala de dependentes/filhos ou da empresa.
+LIMITE_ANOS = _ci(r"\bat[ée] \d{2} anos\b")
+CONTEXTO_NAO_CANDIDATO = _ci(r"dependente|filh|empresa|mercado|hist[óo]ria|experi[êe]ncia")
 
 
 def _verificar_secoes(descricao: str, secoes: list[str]) -> list[str]:
@@ -45,13 +60,15 @@ def _verificar_secoes(descricao: str, secoes: list[str]) -> list[str]:
 
 
 def _termos_discriminatorios(descricao: str) -> list[str]:
-    erros = [f"termo discriminatório: '{m.group(0)}'"
-             for padrao in TERMOS_PROIBIDOS for m in padrao.finditer(descricao)]
+    achados: list[str] = []
     for linha in descricao.splitlines():
-        if CONTEXTO_DIVERSIDADE.search(linha):
-            continue
-        erros += [f"termo discriminatório: '{m.group(0)}'" for m in TERMOS_RELIGIOSOS.finditer(linha)]
-    return erros
+        padroes = list(TERMOS_PROIBIDOS)
+        if not CONTEXTO_DIVERSIDADE.search(linha):
+            padroes += TERMOS_FORA_DE_DIVERSIDADE
+        if not CONTEXTO_NAO_CANDIDATO.search(linha):
+            padroes.append(LIMITE_ANOS)
+        achados += [m.group(0) for padrao in padroes for m in padrao.finditer(linha)]
+    return [f"termo discriminatório: '{t}'" for t in achados]
 
 
 def validar_descricao(descricao: str, secoes: list[str], termos_obrigatorios: list[str] = []) -> list[str]:

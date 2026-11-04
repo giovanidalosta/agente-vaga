@@ -56,3 +56,24 @@ def test_exigencia_religiosa_e_discriminatoria():
 
 def test_todo_minusculo_em_portugues_nao_e_placeholder():
     assert validar_descricao(OK + "Atuação em todo o ciclo do produto.\n", SECOES) == []
+
+
+@pytest.mark.parametrize("linha", [
+    "Não fazemos distinção de gênero, idade ou religião.",
+    "Não discriminamos por religião.",
+    "Venha como você é, seja qual for sua religião, gênero ou idade.",
+    "Plano de saúde extensivo a dependentes até 21 anos.",
+    "Auxílio educação para filhos até 14 anos.",
+])
+def test_frases_legitimas_nao_sao_discriminatorias(linha):
+    assert validar_descricao(OK + linha + "\n", SECOES) == []
+
+
+@pytest.mark.parametrize("linha", [
+    "Sexo: masculino", "Idade: entre 25 e 35 anos", "Faixa etária de 20 a 30",
+    "Limite de idade 35", "Casado(a)", "Estado civil: casado", "Preferencialmente homens",
+    "Somos uma empresa cristã e buscamos pessoas cristãs",
+])
+def test_variacoes_discriminatorias(linha):
+    erros = validar_descricao(OK + linha + "\n", SECOES)
+    assert any(e.startswith("termo discriminatório") for e in erros)

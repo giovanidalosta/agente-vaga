@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from vaga.modelo import secoes_do_modelo
-from vaga.validador import validar_descricao
+from vaga.validador import PLACEHOLDERS, validar_descricao
 
 
 def _utf8(stream) -> None:
@@ -22,7 +22,7 @@ def _utf8(stream) -> None:
 
 def _ler(caminho: str) -> str:
     try:
-        return Path(caminho).read_text(encoding="utf-8")
+        return Path(caminho).read_text(encoding="utf-8-sig")  # tolera BOM (comum no Windows)
     except FileNotFoundError:
         raise FileNotFoundError(f"arquivo não encontrado: {caminho}") from None
 
@@ -52,6 +52,12 @@ def main(argv: list[str] | None = None) -> int:
     if not secoes:
         print(f"erro: modelo não possui seções '## ': {args.modelo}", file=sys.stderr)
         return 2
+
+    for secao in secoes:
+        if any(p.search(secao) for p in PLACEHOLDERS):
+            print(f"erro: modelo tem placeholder no título: '{secao}'. Os títulos '## ' do modelo devem ser literais.",
+                  file=sys.stderr)
+            return 2
 
     erros = validar_descricao(descricao, secoes, args.exigir)
     if erros:
